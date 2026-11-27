@@ -1,0 +1,23 @@
+.{
+    .name = .pagine,
+    .fingerprint = 0x39e31e74d3b95c2a,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .skia_zig = .{
+            .path = "../../skia-zig/skia-zig",
+        },
+    },
+    .paths = .{
+        "LICENSE",
+        "AGENTS.md",
+        "README.md",
+        "README.zh_CN.md",
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+        "examples",
+        "docs",
+    },
+}
