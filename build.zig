@@ -49,6 +49,18 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Shared pure-Zig test helpers (SafeAllocator wrapper, RecordingSink, MockTextEngine, PDF helpers).
+    const test_support_mod = b.createModule(.{
+        .root_source_file = b.path("tests/support.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // Build-injected test font asset (avoids hardcoded cross-repo relative paths & cwd assumptions).
+    const test_roboto_path = skia_dep.path("assets/fonts/Roboto-Regular.ttf");
+    const test_options = b.addOptions();
+    test_options.addOptionPath("roboto_font_path", test_roboto_path);
+
     // Pure-Zig core tests (geometry, style, layout algorithms without Skia link).
     const core_mod = b.createModule(.{
         .root_source_file = b.path("src/core.zig"),
@@ -63,6 +75,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "core", .module = core_mod },
+                .{ .name = "support", .module = test_support_mod },
             },
         }),
     });
@@ -70,43 +83,61 @@ pub fn build(b: *std.Build) void {
     b.step("test-core", "Run pure-Zig layout core unit tests (no Skia link)").dependOn(&run_core_tests.step);
 
     // Full integration tests (linking skia-zig).
+    const integration_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/integration_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pagine", .module = pagine_mod },
+            .{ .name = "skia", .module = skia_mod },
+            .{ .name = "support", .module = test_support_mod },
+        },
+    });
+    integration_test_mod.addAnonymousImport("roboto_ttf", .{ .root_source_file = test_roboto_path });
+    integration_test_mod.addOptions("test_options", test_options);
     const integration_tests = b.addTest(.{
         .name = "pagine-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/integration_test.zig"),
+        .root_module = integration_test_mod,
+    });
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+
+    // Curated self-contained starter examples (each depends ONLY on `pagine`, matching downstream user projects)
+    const examples = [_]struct { name: []const u8, mod_name: []const u8, src: []const u8, desc: []const u8 }{
+        .{ .name = "invoice", .mod_name = "ex_invoice", .src = "examples/invoice.zig", .desc = "Generate multi-page commercial invoice PDF" },
+        .{ .name = "report", .mod_name = "ex_report", .src = "examples/report.zig", .desc = "Generate executive report PDF with cover, image, TOC, charts & PDF/UA" },
+        .{ .name = "statement", .mod_name = "ex_statement", .src = "examples/statement.zig", .desc = "Generate multi-page account statement PDF with dynamic per-page subtotals" },
+        .{ .name = "contract", .mod_name = "ex_contract", .src = "examples/contract.zig", .desc = "Generate formal contract PDF with running headers, watermark & signatures" },
+        .{ .name = "receipt", .mod_name = "ex_receipt", .src = "examples/receipt.zig", .desc = "Generate 80mm continuous-roll thermal POS receipt PDF with Code 39 barcode" },
+        .{ .name = "packing-slip", .mod_name = "ex_packing_slip", .src = "examples/packing_slip.zig", .desc = "Generate batch warehouse packing slips PDF (row_span + mergePdf)" },
+        .{ .name = "certificate", .mod_name = "ex_certificate", .src = "examples/certificate.zig", .desc = "Generate landscape A4 certificate (supports .pdf, .png, .svg output)" },
+    };
+
+    const example_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/examples_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pagine", .module = pagine_mod },
+            .{ .name = "support", .module = test_support_mod },
+        },
+    });
+    example_test_mod.addAnonymousImport("roboto_ttf", .{ .root_source_file = test_roboto_path });
+
+    const examples_step = b.step("examples", "Build all curated examples");
+    for (examples) |ex| {
+        const ex_mod = b.createModule(.{
+            .root_source_file = b.path(ex.src),
             .target = target,
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pagine", .module = pagine_mod },
-                .{ .name = "skia", .module = skia_mod },
             },
-        }),
-    });
-    const run_integration_tests = b.addRunArtifact(integration_tests);
+        });
+        example_test_mod.addImport(ex.mod_name, ex_mod);
 
-    const test_step = b.step("test", "Run all pagine unit and integration tests");
-    test_step.dependOn(&run_core_tests.step);
-    test_step.dependOn(&run_integration_tests.step);
-
-    // Curated examples
-    const examples = [_]struct { name: []const u8, src: []const u8, desc: []const u8 }{
-        .{ .name = "invoice", .src = "examples/invoice.zig", .desc = "Generate multi-page commercial invoice PDF" },
-        .{ .name = "report", .src = "examples/report.zig", .desc = "Generate executive report PDF with TOC, charts, SVG & PDF/UA" },
-    };
-
-    const examples_step = b.step("examples", "Build all curated examples");
-    for (examples) |ex| {
         const exe = b.addExecutable(.{
             .name = b.fmt("example-{s}", .{ex.name}),
-            .root_module = b.createModule(.{
-                .root_source_file = b.path(ex.src),
-                .target = target,
-                .optimize = optimize,
-                .imports = &.{
-                    .{ .name = "pagine", .module = pagine_mod },
-                    .{ .name = "skia", .module = skia_mod },
-                },
-            }),
+            .root_module = ex_mod,
         });
         examples_step.dependOn(&exe.step);
 
@@ -115,18 +146,33 @@ pub fn build(b: *std.Build) void {
         b.step(b.fmt("run-{s}", .{ex.name}), ex.desc).dependOn(&run_exe.step);
     }
 
+    // End-to-end verification of all 7 curated examples (PDF, PNG, SVG, mergePdf & zero leaks).
+    const example_tests = b.addTest(.{
+        .name = "pagine-example-tests",
+        .root_module = example_test_mod,
+    });
+    const run_example_tests = b.addRunArtifact(example_tests);
+
+    const test_step = b.step("test", "Run all pagine unit and integration tests");
+    test_step.dependOn(&run_core_tests.step);
+    test_step.dependOn(&run_integration_tests.step);
+    test_step.dependOn(&run_example_tests.step);
+
     // ReleaseFast throughput benchmark
+    const bench_mod = b.createModule(.{
+        .root_source_file = b.path("tests/benchmark.zig"),
+        .target = target,
+        .optimize = .fast,
+        .imports = &.{
+            .{ .name = "pagine", .module = pagine_mod },
+            .{ .name = "skia", .module = skia_mod },
+            .{ .name = "support", .module = test_support_mod },
+        },
+    });
+    bench_mod.addAnonymousImport("roboto_ttf", .{ .root_source_file = test_roboto_path });
     const bench_exe = b.addExecutable(.{
         .name = "pagine-bench",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/benchmark.zig"),
-            .target = target,
-            .optimize = .fast,
-            .imports = &.{
-                .{ .name = "pagine", .module = pagine_mod },
-                .{ .name = "skia", .module = skia_mod },
-            },
-        }),
+        .root_module = bench_mod,
     });
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.addPassthruArgs();

@@ -174,9 +174,13 @@ pub const TextStyle = struct {
     color: ?Color = null,
     background: ?Color = null,
     font_families: ?[]const [:0]const u8 = null,
+    /// Font size in points (`1 pt = 1/72 inch`).
     size: ?f32 = null,
+    /// Unitless line-height multiplier relative to `size` (e.g. `1.4`).
     line_height: ?f32 = null,
+    /// Extra tracking between characters in points (`pt`).
     letter_spacing: ?f32 = null,
+    /// Extra spacing between words in points (`pt`).
     word_spacing: ?f32 = null,
     weight: ?FontWeight = null,
     slant: ?FontSlant = null,

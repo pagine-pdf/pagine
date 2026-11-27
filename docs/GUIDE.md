@@ -347,4 +347,29 @@ var fonts = try pagine.FontRegistry.init(.{
 defer fonts.deinit();
 ```
 
-完整端到端用法可参考 [examples/invoice.zig](../examples/invoice.zig) 与 [examples/report.zig](../examples/report.zig)。
+完整端到端用法可参考下方 `examples/` 中的 7 个独立可运行示例。
+
+---
+
+## 9. 开箱企业示例与可复制单文件模板（`examples/`）
+
+为了保持核心库 `src/` 轻量中立并最大化复制上手体验，高频商业单据全部作为**单文件自包含示例**沉淀在 `examples/` 目录下（仅依赖 `std` 与 `@import("pagine")`，无跨文件耦合，且在 `tests/examples_test.zig` 中全部通过 `SafeAllocator` 零泄漏回归验证）。每个示例既可一键运行预览，也可直接单文件复制到你的项目中调用 `compose(&doc, data)`：
+
+| 示例入口 | 运行命令 | 代表性业务场景与展示能力 |
+| --- | --- | --- |
+| [invoice.zig](../examples/invoice.zig) | `zig build run-invoice` | **商业发票**：渐变抬头、`showEntire` 防拆分地址/汇总卡、跨页重复表头明细表、原生 `pagine.skia` Canvas 绘图 |
+| [report.zig](../examples/report.zig) | `zig build run-report` | **综合研报**：多 `PageSet`（全出血封面 + 正文）、`Image` 位图下采样、`Svg` 矢量 Logo、自动页码可点击目录、Skia 柱状图与双栏等高排版、PDF/UA 书签 |
+| [statement.zig](../examples/statement.zig) | `zig build run-statement` | **财务对账单**：页感知 `dynamic` + `measureElement` 跨页流水账（自动生成每页承前/过次小计行）、KPI 卡、账龄分布表与虚线撕条回执 |
+| [contract.zig](../examples/contract.zig) | `zig build run-contract` | **正式合同**：`page.header()` 首/次页差异页眉（`showOnce`/`skipOnce`）、前景旋转水印、关键条款表、`ensureSpace` 防孤立编号条款与签章区 |
+| [receipt.zig](../examples/receipt.zig) | `zig build run-receipt` | **热敏 POS 小票**：`.continuous` 连续卷纸（默认 80mm，自适应 58mm）、虚线分割、规格/折扣/找零与可扫码 Code 39 矢量条码 |
+| [packing_slip.zig](../examples/packing_slip.zig) | `zig build run-packing-slip` | **仓库发货单（批量）**：`Table` `row_span` 分箱合并与底部延展、`Inlined` + 结构体 `component(Badge)` 芯片、Code 39 运单条码、`mergePdf` 多单独立页码合并 |
+| [certificate.zig](../examples/certificate.zig) | `zig build run-certificate` | **横版荣誉证书**：`.a4_landscape` 双层装饰边框、`svgPath` 星章、可点击核验外链、多签发人落款，且按输出后缀支持 `.pdf` / `.png` / `.svg` 多后端导出 |
+
+所有示例默认输出至 `zig-out/<name>.pdf`，也可通过 `-- <path>` 自定义路径（`certificate` 会自动根据 `.png` / `.svg` / `.pdf` 后缀切换渲染后端）：
+
+```bash
+zig build run-statement -- /tmp/statement.pdf
+zig build run-packing-slip -- /tmp/packing_slips.pdf
+zig build run-certificate -- /tmp/certificate.png
+zig build run-certificate -- /tmp/certificate.svg
+```

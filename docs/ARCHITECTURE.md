@@ -49,10 +49,10 @@
   │   ├── tree.zig               (Arena 扁平节点池, NodeId, NodePayload, 粘滞错误, 外部资源清理表)
   │   ├── builder.zig            (Document, PageBuilder, Slot 及各容器/富文本 Builder 句柄)
   │   ├── state.zig              (外置 StateStore, checkpoint/restore, PageContext 页码与 Section 表)
-  │   ├── backend/sink.zig       (RenderSink 接口, NullSink, RecordingSink)
+  │   ├── backend/sink.zig       (RenderSink 接口, NullSink)
   │   └── layout/
   │       ├── space_plan.zig     (SpacePlan 四态协议)
-  │       ├── text_engine.zig    (TextEngine 接口, PageNumber 格式化, MockTextEngine)
+  │       ├── text_engine.zig    (TextEngine 接口, PageNumber 格式化)
   │       ├── table.zig          (Table 自动占位规划, 跨行列冲突校验, 列宽计算)
   │       ├── engine.zig         (双阶段分页驱动, 全元素 Measure/Draw, 多文档合并)
   │       └── diagnostics.zig    (LayoutOverflow 根因追踪与树形报告格式化)

@@ -157,6 +157,7 @@ try fonts.registerFile("assets/NotoSansSC-Regular.ttf", "Noto Sans SC");
 | **Rich Typography** | `SkParagraph` (HarfBuzz + ICU BiDi/RTL/CJK), style inheritance, paragraph spacing, first-line indent, line clamping, dynamic page numbers, clickable hyperlinks & internal section links, inline embedded widgets |
 | **Visuals & Graphics** | Fused `.box(...)` (rounded corners, dashed borders, linear gradients, drop shadows), DPI-aware auto-downsampled & deduplicated images, `Svg` DOM & inline `svgPath`, typed `pagine.drawCanvas(...)` Skia escape hatch |
 | **Standards & Diagnostics** | PDF/A, PDF/UA accessibility structure tags (`heading(1..6)`, `semantic(...)`), PDF Outline bookmarks, `check_missing_glyphs`, and `LayoutOverflow` constraint traces with optional `@src()` locations |
+| **Starter Examples** | 7 single-file copy-pasteable business examples in `examples/` (zero cross-file deps, only `@import("pagine")`): `invoice`, `report` (Image/SVG/TOC/Chart/MultiColumn), `statement` (`dynamic` per-page subtotals), `contract`, `receipt` (80mm/58mm + Code 39), `packing_slip` (`row_span` + `mergePdf`), and `certificate` (PDF/PNG/SVG export) |
 
 ---
 
@@ -177,8 +178,13 @@ Designed for predictable latency and zero memory leaks (verified under Zig 0.17 
 zig build test-core                        # Pure-Zig layout core unit tests (no Skia needed)
 zig build test                             # Full unit + Skia PDF/PNG/SVG integration tests
 zig build examples                         # Build all curated examples
-zig build run-invoice -- /tmp/invoice.pdf  # Run commercial invoice example
-zig build run-report -- /tmp/report.pdf    # Run executive report example
+zig build run-invoice -- /tmp/invoice.pdf           # Commercial invoice
+zig build run-report -- /tmp/report.pdf             # Executive report (TOC + charts + PDF/UA)
+zig build run-statement -- /tmp/statement.pdf       # Financial account statement
+zig build run-contract -- /tmp/contract.pdf         # Formal contract / MSA
+zig build run-receipt -- /tmp/receipt.pdf           # 80mm thermal POS receipt (continuous roll)
+zig build run-packing-slip -- /tmp/packing_slip.pdf # Warehouse packing slip
+zig build run-certificate -- /tmp/certificate.pdf   # Landscape A4 award certificate
 zig build bench                            # ReleaseFast throughput benchmark
 zig build fmt-check                        # Check Zig code formatting
 ```

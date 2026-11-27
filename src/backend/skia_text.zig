@@ -133,10 +133,10 @@ pub const SkiaTextEngine = struct {
             if (lh > 0) ts.setHeight(lh, true);
         }
         if (!geom.approxEq(resolved.letter_spacing, 0)) {
-            ts.setLetterSpacing(resolved.letter_spacing * resolved.size);
+            ts.setLetterSpacing(resolved.letter_spacing);
         }
         if (!geom.approxEq(resolved.word_spacing, 0)) {
-            ts.setWordSpacing(resolved.word_spacing * resolved.size);
+            ts.setWordSpacing(resolved.word_spacing);
         }
         const baseline_shift = resolved.effectiveBaselineShift();
         if (!geom.approxEq(baseline_shift, 0)) {

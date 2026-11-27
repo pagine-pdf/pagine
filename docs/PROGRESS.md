@@ -23,3 +23,7 @@
   - DPI 感知图片自动下采样 + JPEG/PNG 重编码与去重缓存（800×800 缩略图场景 PDF 体积缩减 > 5×）
   - 预规划 `TableCache` + O(log N) 行二分定位 + 逐页 `SkParagraph` 淘汰 + 静态子树 `SkPicture` 快照缓存（ReleaseFast 基准从 259.8 pages/s 提升至 **525.0 pages/s**，**2.02×** 加速）
   - `FontRegistry.setParagraphCacheEnabled(false)` 并发开关与 4 线程并发 PDF 零泄漏集成测试
+- [x] **M7（开箱企业示例治理 `examples/`）**：
+  - 保持核心库 `src/` 轻量中立，在 `examples/` 下提供 7 套**单文件自包含**商业单据示例（`invoice`、`report`、`statement`、`contract`、`receipt`、`packing_slip`、`certificate`），全部仅依赖 `std` 与 `@import("pagine")`，无跨文件耦合，方便直接复制 `compose(&doc, data)` 到用户项目
+  - 覆盖完整代表性能力矩阵：多页表格、多 `PageSet` 封面与目录、`Image` 位图下采样、`Svg`/`svgPath`、原生 Skia 绘图、`MultiColumn`、`dynamic`+`measureElement` 跨页承前过次小计、`showOnce`/`skipOnce` 差异页眉、连续卷纸、可扫码 Code 39 条码、`Table` `row_span` 分箱、`mergePdf` 批量合并以及 PDF/PNG/SVG 多后端导出
+  - 全部 7 个示例的回归验证独立沉淀在 `tests/examples_test.zig`，随 `zig build test` 通过 `SafeAllocator` 零泄漏校验

@@ -158,6 +158,7 @@ try fonts.registerFile("assets/NotoSansSC-Regular.ttf", "Noto Sans SC");
 | **富文本与国际化** | 基于 `SkParagraph`（HarfBuzz + ICU，支持 CJK / RTL / BiDi）、样式继承、段落间距、首行缩进、行数截断、动态页码、行内超链接与章节跳转、行内嵌入组件 |
 | **视觉与图形** | 融合容器 `.box(...)`（圆角、虚线边框、线性渐变、阴影）、DPI 感知图片自动下采样与去重、矢量 `Svg` 与内联 `svgPath`、`pagine.drawCanvas(...)` 原生 Skia 绘图 |
 | **标准与诊断** | PDF/A、PDF/UA 无障碍结构标签（`heading(1..6)`、`semantic(...)`）、PDF 书签大纲、`check_missing_glyphs` 缺字检测、`LayoutOverflow` 约束追踪树（支持 `@src()` 源码定位） |
+| **开箱企业示例** | `examples/` 下 7 个**单文件零额外依赖**（仅 `@import("pagine")`）、可直接复制 `compose(&doc, data)` 的业务示例：商业发票 `invoice`、综合研报 `report`（图片/SVG/目录/图表/双栏）、对账单 `statement`（`dynamic` 跨页承前过次小计）、正式合同 `contract`、热敏小票 `receipt`（80mm/58mm 卷纸 + Code 39 真条码）、发货单 `packing_slip`（`row_span` 分箱 + `mergePdf` 批量合并）、横版证书 `certificate`（支持 `.pdf`/`.png`/`.svg` 多后端导出） |
 
 ---
 
@@ -178,8 +179,13 @@ try fonts.registerFile("assets/NotoSansSC-Regular.ttf", "Noto Sans SC");
 zig build test-core                        # 纯 Zig 布局核心单元测试（无需链接 Skia）
 zig build test                             # 全量单元测试 + Skia PDF/PNG/SVG 集成测试
 zig build examples                         # 构建全部精选示例
-zig build run-invoice -- /tmp/invoice.pdf  # 生成商业发票示例 PDF
-zig build run-report -- /tmp/report.pdf    # 生成财务研报示例 PDF
+zig build run-invoice -- /tmp/invoice.pdf           # 生成商业发票示例 PDF
+zig build run-report -- /tmp/report.pdf             # 生成财务研报示例 PDF
+zig build run-statement -- /tmp/statement.pdf       # 生成财务对账单示例 PDF
+zig build run-contract -- /tmp/contract.pdf         # 生成正式合同示例 PDF
+zig build run-receipt -- /tmp/receipt.pdf           # 生成 80mm 热敏小票示例 PDF
+zig build run-packing-slip -- /tmp/packing_slip.pdf # 生成仓库发货单示例 PDF
+zig build run-certificate -- /tmp/certificate.pdf   # 生成横版证书示例 PDF
 zig build bench                            # ReleaseFast 多页吞吐性能基准
 zig build fmt-check                        # Zig 代码格式检查
 ```

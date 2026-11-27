@@ -1,16 +1,18 @@
 const std = @import("std");
 const pagine = @import("pagine");
+const support = @import("support");
 
-pub fn main(init: std.process.Init) !void {
-    const gpa = init.gpa;
-    const io = init.io;
+const roboto_ttf = @embedFile("roboto_ttf");
 
-    var fonts = try pagine.FontRegistry.init(.{});
-    defer fonts.deinit();
-    fonts.registerFile("../../skia-zig/skia-zig/assets/fonts/Roboto-Regular.ttf", "Roboto") catch {};
+const Sample = struct {
+    compose_ms: f64,
+    render_ms: f64,
+    total_ms: f64,
+    page_count: usize,
+    pdf_bytes: usize,
+};
 
-    const row_count: usize = 2_000; // ~85+ A4 pages of rich table rows + repeating header/footer
-
+fn runOnce(gpa: std.mem.Allocator, io: std.Io, fonts: *const pagine.FontRegistry, row_count: usize) !Sample {
     const t0 = std.Io.Clock.now(.awake, io);
 
     var doc = pagine.Document.init(gpa, .{});
@@ -45,7 +47,7 @@ pub fn main(init: std.process.Init) !void {
     const t1 = std.Io.Clock.now(.awake, io);
 
     var pdf = try pagine.renderPdf(&doc, .{
-        .fonts = &fonts,
+        .fonts = fonts,
         .title = "pagine Benchmark",
     });
     defer pdf.deinit();
@@ -54,30 +56,62 @@ pub fn main(init: std.process.Init) !void {
 
     const compose_ms = @as(f64, @floatFromInt(t1.nanoseconds - t0.nanoseconds)) / 1e6;
     const render_ms = @as(f64, @floatFromInt(t2.nanoseconds - t1.nanoseconds)) / 1e6;
-    const total_ms = compose_ms + render_ms;
-
-    // Count emitted pages from PDF bytes
-    var page_count: usize = 0;
-    var pos: usize = 0;
     const bytes = pdf.bytes();
-    while (std.mem.indexOfPos(u8, bytes, pos, "/Type /Page\n")) |idx| {
-        page_count += 1;
-        pos = idx + 12;
-    }
-    if (page_count == 0) {
-        pos = 0;
-        while (std.mem.indexOfPos(u8, bytes, pos, "/MediaBox")) |idx| {
-            page_count += 1;
-            pos = idx + 9;
-        }
+
+    return .{
+        .compose_ms = compose_ms,
+        .render_ms = render_ms,
+        .total_ms = compose_ms + render_ms,
+        .page_count = support.countPdfPages(bytes),
+        .pdf_bytes = bytes.len,
+    };
+}
+
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.gpa;
+    const io = init.io;
+
+    var fonts = try pagine.FontRegistry.init(.{});
+    defer fonts.deinit();
+    try fonts.registerBytes(roboto_ttf, "Roboto");
+
+    const row_count: usize = 2_000;
+    const iterations: usize = 3;
+
+    // 1 warm-up run (primes font shaping & Skia caches so measured runs reflect steady-state throughput)
+    _ = try runOnce(gpa, io, &fonts, row_count);
+
+    var samples: [iterations]Sample = undefined;
+    for (0..iterations) |i| {
+        samples[i] = try runOnce(gpa, io, &fonts, row_count);
     }
 
-    const pages_per_sec = if (total_ms > 0) (@as(f64, @floatFromInt(page_count)) / (total_ms / 1000.0)) else 0;
-    var buf: [256]u8 = undefined;
+    // Sort by total_ms to report median & best
+    std.mem.sort(Sample, &samples, {}, struct {
+        fn lessThan(_: void, a: Sample, b: Sample) bool {
+            return a.total_ms < b.total_ms;
+        }
+    }.lessThan);
+
+    const best = samples[0];
+    const median = samples[iterations / 2];
+    const pages_per_sec = if (median.total_ms > 0) (@as(f64, @floatFromInt(median.page_count)) / (median.total_ms / 1000.0)) else 0;
+
+    var buf: [320]u8 = undefined;
     const summary = try std.fmt.bufPrint(
         &buf,
-        "pagine bench ({d} rows -> {d} pages, {d} KB PDF): compose={d:.2}ms, render={d:.2}ms, total={d:.2}ms ({d:.1} pages/s)\n",
-        .{ row_count, page_count, bytes.len / 1024, compose_ms, render_ms, total_ms, pages_per_sec },
+        "pagine bench ({d} rows -> {d} pages, {d} KB PDF, 1 warmup + {d} runs): median compose={d:.2}ms, render={d:.2}ms, total={d:.2}ms ({d:.1} pages/s; best={d:.2}ms)\n",
+        .{
+            row_count,
+            median.page_count,
+            median.pdf_bytes / 1024,
+            iterations,
+            median.compose_ms,
+            median.render_ms,
+            median.total_ms,
+            pages_per_sec,
+            best.total_ms,
+        },
     );
     try std.Io.File.stdout().writeStreamingAll(io, summary);
 }

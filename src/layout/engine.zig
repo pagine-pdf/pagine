@@ -119,15 +119,23 @@ pub const RenderContext = struct {
             .empty => .empty(),
             .container => if (node.first_child == null_node) .empty() else self.measure(node.first_child, available),
             .page => |cfg| self.measurePage(cfg, available),
-            .column => |cfg| self.measureColumn(id, cfg.spacing, available),
-            .row => |cfg| self.measureRow(id, cfg.spacing, available),
+            .column, .row, .decoration, .layers, .inlined, .multi_column, .table_section => blk: {
+                const prev_ta = self.inherited_text_align;
+                self.inherited_text_align = null;
+                defer self.inherited_text_align = prev_ta;
+                break :blk switch (node.payload) {
+                    .column => |cfg| self.measureColumn(id, cfg.spacing, available),
+                    .row => |cfg| self.measureRow(id, cfg.spacing, available),
+                    .decoration => |cfg| self.measureDecoration(cfg, available),
+                    .layers => self.measureLayers(id, available),
+                    .inlined => |cfg| self.measureInlined(id, cfg, available),
+                    .multi_column => |cfg| self.measureMultiColumn(cfg, available),
+                    .table_section => |cfg| self.measureTableSection(id, cfg, available),
+                    else => unreachable,
+                };
+            },
             .row_item => self.measureRowItem(id, available),
-            .decoration => |cfg| self.measureDecoration(cfg, available),
-            .layers => self.measureLayers(id, available),
             .layer => self.measure(node.first_child, available),
-            .inlined => |cfg| self.measureInlined(id, cfg, available),
-            .multi_column => |cfg| self.measureMultiColumn(cfg, available),
-            .table_section => |cfg| self.measureTableSection(id, cfg, available),
             .padding => |insets| self.measurePadding(node.first_child, insets, available),
             .background => self.measureVisualWrapper(node.first_child, available),
             .border => self.measureVisualWrapper(node.first_child, available),
@@ -221,15 +229,23 @@ pub const RenderContext = struct {
             .empty => {},
             .container => self.draw(node.first_child, available),
             .page => |cfg| self.drawPage(cfg, available),
-            .column => |cfg| self.drawColumn(id, cfg.spacing, available),
-            .row => |cfg| self.drawRow(id, cfg.spacing, available),
+            .column, .row, .decoration, .layers, .inlined, .multi_column, .table_section => {
+                const prev_ta = self.inherited_text_align;
+                self.inherited_text_align = null;
+                defer self.inherited_text_align = prev_ta;
+                switch (node.payload) {
+                    .column => |cfg| self.drawColumn(id, cfg.spacing, available),
+                    .row => |cfg| self.drawRow(id, cfg.spacing, available),
+                    .decoration => |cfg| self.drawDecoration(cfg, available),
+                    .layers => self.drawLayers(id, available),
+                    .inlined => |cfg| self.drawInlined(id, cfg, available),
+                    .multi_column => |cfg| self.drawMultiColumn(cfg, available),
+                    .table_section => |cfg| self.drawTableSection(id, cfg, available),
+                    else => unreachable,
+                }
+            },
             .row_item => self.drawRowItem(id, available),
-            .decoration => |cfg| self.drawDecoration(cfg, available),
-            .layers => self.drawLayers(id, available),
             .layer => self.draw(node.first_child, available),
-            .inlined => |cfg| self.drawInlined(id, cfg, available),
-            .multi_column => |cfg| self.drawMultiColumn(cfg, available),
-            .table_section => |cfg| self.drawTableSection(id, cfg, available),
             .padding => |insets| self.drawPadding(node.first_child, insets, available),
             .background => |cfg| {
                 const rect = Rect.fromXYWH(0, 0, available.width, available.height);

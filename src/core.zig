@@ -65,5 +65,3 @@ pub const SpacePlan = space_plan.SpacePlan;
 pub const LayoutDiagnostic = diagnostics.LayoutDiagnostic;
 pub const MergePageNumberStrategy = engine.MergePageNumberStrategy;
 pub const RenderSink = sink.RenderSink;
-pub const RecordingSink = sink.RecordingSink;
-pub const MockTextEngine = text_engine.MockTextEngine;
