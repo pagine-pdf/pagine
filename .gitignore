@@ -1,9 +1,3 @@
 .zig-cache/
 zig-out/
 zig-pkg/
-*.pdf
-*.png
-*.jpg
-*.webp
-*.svg
-.DS_Store
